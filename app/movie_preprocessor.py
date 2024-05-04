@@ -35,6 +35,17 @@ def add_poster(df):
             df.at[i, "poster_path"] = "https://image.tmdb.org/t/p/original/uXDfjJbdP4ijW5hWSBrPrlKpxab.jpg"
     return df
 
+def add_overview(df):
+    for i, row in tqdm(df.iterrows(), total=df.shape[0]):
+        tmdb_id = row["tmdbId"]
+        tmdb_url = f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={API_KEY}&language=en-US"
+        result = requests.get(tmdb_url)
+        try:
+            overview = result.json()['overview']
+            df.at[i, "overview"] = overview
+        except (TypeError, KeyError):
+            df.at[i, "overview"] = None
+    return df
 
 if __name__ == "__main__":
     # movies_df = pd.read_csv('data/movies.csv')
@@ -51,6 +62,8 @@ if __name__ == "__main__":
     merged_df['url'] = merged_df['imdbId'].apply(lambda x: add_url(x))
     result_df = add_rating(merged_df)
     result_df['poster_path'] = None
+    result_df['overview'] = None
     result_df = add_poster(result_df)
+    result_df = add_overview(result_df)
 
     result_df.to_csv("data/movies_final.csv", index=None)
