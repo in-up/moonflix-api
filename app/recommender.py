@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 from scipy.sparse import coo_matrix
 from implicit.als import AlternatingLeastSquares
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 import pickle
 
 saved_model_fname = "model/finalized_model.sav"
@@ -36,26 +38,27 @@ def model_train():
     return als_model
 
 
-def calculate_item_based(item_id, items):
-    loaded_model = pickle.load(open(saved_model_fname, "rb"))
-    recs = loaded_model.similar_items(itemid=int(item_id), N=11)
-    return [str(items[r]) for r, s in recs]
-
-
-def item_based_recommendation(item_id):
-    ratings_df = pd.read_csv(data_fname)
-    ratings_df["userId"] = ratings_df["userId"].astype("category")
-    ratings_df["movieId"] = ratings_df["movieId"].astype("category")
+def calculate_item_based(item: str):
     movies_df = pd.read_csv(item_fname)
+    movies_df[item] = movies_df[item].fillna('')
 
-    items = dict(enumerate(ratings_df["movieId"].cat.categories))
-    try:
-        parsed_id = ratings_df["movieId"].cat.categories.get_loc(int(item_id))
-        result = calculate_item_based(parsed_id, items)
-    except KeyError as e:
-        result = []
-    result = [int(x) for x in result if x != item_id]
-    result_items = movies_df[movies_df["movieId"].isin(result)].to_dict("records")
+    t = TfidfVectorizer(stop_words="english")
+    tfidf_matrix = t.fit_transform(movies_df[item])
+    cosine_matrix = cosine_similarity(tfidf_matrix, tfidf_matrix)
+    return cosine_matrix
+
+
+def item_based_recommendation(title: str, overview_cosine_matrix=calculate_item_based("overview"), genres_cosine_matrix=calculate_item_based("genres")):
+    movies_df = pd.read_csv(item_fname)
+    title_to_index = movies_df[movies_df["title"]==title].index.values
+
+    overview_similar_movies = list(enumerate(overview_cosine_matrix[int(title_to_index)]))
+    genres_similar_movies = list(enumerate(genres_cosine_matrix[int(title_to_index)]))
+    similar_movies = [(x1, y1 + (0.125) * y2) for (x1, y1), (x2, y2) in zip(overview_similar_movies, genres_similar_movies)]
+    similar_movies = sorted(similar_movies, key=lambda x: x[1], reverse=True)[1:11]
+
+    movies_indexes = [index[0] for index in similar_movies]
+    result_items = movies_df.iloc[movies_indexes]
     return result_items
 
 
