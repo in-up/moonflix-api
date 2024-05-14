@@ -38,7 +38,7 @@ async def root():
 
 @app.get("/all/")
 async def all_movies():
-    result = await random_items()  # await 추가 
+    result = random_items()  # await 추가 
     return {"result": result}
 
 
