@@ -5,7 +5,7 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware import Middleware
 
-from recommender import item_based_recommendation, user_based_recommendation
+from recommender import item_based_recommendation, user_based_recommendation,_search_movies_r, _search_movies
 from resolver import random_genres_items, random_items
 
 origins = [
@@ -38,14 +38,15 @@ async def root():
 
 @app.get("/all/")
 async def all_movies():
-    result = random_items()
+    result = random_items()  # await 추가 
     return {"result": result}
 
 
 @app.get("/genres/{genre}")
 async def genre_movies(genre: str):
-    result = random_genres_items(genre)
+    result = await random_genres_items(genre)  # await 추가
     return {"result": result}
+
 
 
 @app.get("/user-based/")
@@ -60,4 +61,14 @@ async def user_based(params: Optional[List[str]] = Query(None)):
 @app.get("/item-based/{item_id}")
 async def item_based(item_id: str):
     result = item_based_recommendation(item_id)
+    return {"result": result}
+
+@app.get("/search/")
+async def search_movies(query: str = Query(None)):
+    result = await _search_movies(query)
+    return {"result": result}
+
+@app.get("/search-recommendation/") 
+async def search_movies(query: str = Query(None)):
+    result = await _search_movies_r (query)  # 변경된 함수명 사용 
     return {"result": result}
