@@ -1,15 +1,20 @@
 import pandas as pd
-import random
+import re
 
 item_fname = 'data/movies_final.csv'
 
 
-def random_items():
-
+def get_weighted_rating_df():
     def weighted_rating(x):
         v = x["rating_count"]
         R = x["rating_avg"]
         return ((v/(v+m) * R) + (m/(m+v) * C))
+    
+    def get_year(x):
+        title = x["title"][-6::]
+        get = re.compile('\(([^)]+)')
+        year = get.findall(title)
+        return year[0]
     
     movies_df = pd.read_csv(item_fname)
     movies_df["rating_count"] = movies_df["rating_count"].astype(int)
@@ -17,37 +22,28 @@ def random_items():
     C = rating_avg.mean()
     m = movies_df["rating_count"].quantile(0.95)
 
-    wr_df = movies_df[(movies_df["rating_count"] >= m)]
+    wr_df = movies_df[(movies_df["rating_count"] >= m)].copy()
     wr_df["weighted_rating"] = wr_df.apply(weighted_rating, axis=1)
-    wr_df = wr_df.sort_values(by="weighted_rating", ascending=False)[:250]
+    wr_df["year"] = wr_df.apply(get_year, axis=1)
+    return wr_df
 
-    random_movies = wr_df.sample(n=10)
-    movies_indexes = random_movies.index
+
+def random_items(wr_df=get_weighted_rating_df()):
+    movies_df = pd.read_csv(item_fname)
+    wr_df = wr_df.sort_values(by="year", ascending=False)[:10]
+
+    movies_indexes = wr_df.index
     result_items = movies_df.loc[movies_indexes].to_dict("records")
 
     return result_items
 
 
-def random_genres_items(genre: str):
+def random_genres_items(genre: str, wr_df=get_weighted_rating_df()):
     movies_df = pd.read_csv(item_fname)
-    movies_df["rating_count"] = movies_df["rating_count"].astype(int)
+    genre_df = wr_df[wr_df["genres"].str.contains(genre)]
+    genre_df = genre_df.sort_values(by="year", ascending=False)[:10]
 
-    tmp1, tmp2, min, max, df_len = 0, 0, 0, 0, 0
-    while((tmp1 == tmp2) | df_len < 50):
-        for i in range(0, 2):
-            random_number = random.randint(10, 329)
-            if (i == 0): tmp1 = random_number
-            if (i == 1): tmp2 = random_number
-        if (tmp1 > tmp2):
-            max = tmp1
-            min = tmp2
-        else:
-            min = tmp1
-            max = tmp2
-        genre_df = movies_df[movies_df["genres"].str.contains(genre)]
-        random_df = genre_df[(genre_df["rating_count"] > min) & (genre_df["rating_count"] < max)]
-        df_len = len(random_df)
-
-    result_items = random_df.sort_values(by="rating_avg", ascending=False)[:10].to_dict("records")
+    movies_indexes = genre_df.index
+    result_items = movies_df.loc[movies_indexes].to_dict("records")
 
     return result_items
