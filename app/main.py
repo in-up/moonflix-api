@@ -38,13 +38,13 @@ async def root():
 
 @app.get("/all/")
 async def all_movies():
-    result = random_items()  # await 추가 
+    result = random_items()
     return {"result": result}
 
 
 @app.get("/genres/{genre}")
 async def genre_movies(genre: str):
-    result = await random_genres_items(genre)  # await 추가
+    result = random_genres_items(genre)
     return {"result": result}
 
 
