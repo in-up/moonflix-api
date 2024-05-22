@@ -22,7 +22,7 @@ def get_weighted_rating_df():
     C = rating_avg.mean()
     m = movies_df["rating_count"].quantile(0.95)
 
-    wr_df = movies_df[(movies_df["rating_count"] >= m)].copy()
+    wr_df = movies_df[(movies_df["rating_count"] >= movies_df["rating_count"].mean())].copy()
     wr_df["weighted_rating"] = wr_df.apply(weighted_rating, axis=1)
     wr_df["year"] = wr_df.apply(get_year, axis=1)
     return wr_df
