@@ -30,9 +30,12 @@ def get_weighted_rating_df():
 
 def random_items(wr_df=get_weighted_rating_df()):
     movies_df = pd.read_csv(item_fname)
-    wr_df = wr_df.sort_values(by="year", ascending=False)[:10]
+    wr_df["year"] = wr_df["year"].astype(int)
+    q = wr_df["year"].quantile(0.9)
+    df = wr_df[wr_df["year"] > q].copy()
+    df = df.sample(n=10).sort_values(by="year", ascending=False)
 
-    movies_indexes = wr_df.index
+    movies_indexes = df.index
     result_items = movies_df.loc[movies_indexes].to_dict("records")
 
     return result_items
@@ -41,9 +44,15 @@ def random_items(wr_df=get_weighted_rating_df()):
 def random_genres_items(genre: str, wr_df=get_weighted_rating_df()):
     movies_df = pd.read_csv(item_fname)
     genre_df = wr_df[wr_df["genres"].str.contains(genre)]
-    genre_df = genre_df.sort_values(by="year", ascending=False)[:10]
+    genre_df["year"] = genre_df["year"].astype(int)
+    m = genre_df["year"].mean()
+    df = genre_df[genre_df["year"] > m].copy()
+    if len(df) <= 10:
+        df = df.sort_values(by="year", ascending=False)
+    else:
+        df = df.sample(n=10).sort_values(by="year", ascending=False)
 
-    movies_indexes = genre_df.index
+    movies_indexes = df.index
     result_items = movies_df.loc[movies_indexes].to_dict("records")
 
     return result_items
