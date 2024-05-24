@@ -59,7 +59,7 @@ async def user_based(params: Optional[List[str]] = Query(None)):
 
 
 @app.get("/item-based/{item_id}")
-async def item_based(item_id: str):
+async def item_based(item_id: int):
     result = item_based_recommendation(item_id)
     return {"result": result}
 
