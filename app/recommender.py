@@ -50,10 +50,10 @@ def calculate_item_based(item: str, movies_df, index):
     return similar_list
 
 
-def item_based_recommendation(title: str):
+def item_based_recommendation(id: int):
     movies_df = pd.read_csv(item_fname)
 
-    title_to_index = movies_df[movies_df["title"]==title].index.values
+    title_to_index = movies_df[movies_df["tmdbId"]==id].index.values
     idx = title_to_index[0]
     
     with ThreadPoolExecutor(max_workers=3) as executor:
