@@ -48,13 +48,9 @@ async def genre_movies(genre: str):
     return {"result": result}
 
 
-
-@app.get("/user-based/")
-async def user_based(params: Optional[List[str]] = Query(None)):
-    input_ratings_dict = dict(
-        (int(x.split(":")[0]), float(x.split(":")[1])) for x in params
-    )
-    result = user_based_recommendation(input_ratings_dict)
+@app.get("/user-based/{user_id}")
+async def user_based(user_id: str):
+    result = user_based_recommendation(user_id)
     return {"result": result}
 
 
