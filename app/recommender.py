@@ -1,16 +1,24 @@
 import pandas as pd
 import numpy as np
+import os
 from scipy.sparse import coo_matrix
 from implicit.als import AlternatingLeastSquares
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from concurrent.futures import ThreadPoolExecutor
+from sklearn.neighbors import NearestNeighbors
+from dotenv import load_dotenv
+from supabase import create_client, Client
 import pickle
 
 saved_model_fname = "model/finalized_model.sav"
 data_fname = "data/ratings.csv"
 item_fname = "data/movies_final.csv"
 weight = 10
+load_dotenv()
+url: str = os.getenv("supabase_url")
+key: str = os.getenv("supabase_key")
+supabase: Client = create_client(url, key)
 
 
 def model_train():
@@ -74,40 +82,59 @@ def item_based_recommendation(id: int):
     return result_items
 
 
-def calculate_user_based(user_items, items):
-    loaded_model = pickle.load(open(saved_model_fname, "rb"))
-    recs = loaded_model.recommend(
-        userid=0, user_items=user_items, recalculate_user=True, N=10
-    )
-    return [str(items[r]) for r in recs[0]]
+def get_rating_df():
+    response = supabase.table("useritem").select("*").execute()
+    data = response.data
+    df = pd.DataFrame(data)
+    return df
 
 
-def build_matrix_input(input_rating_dict, items):
-    model = pickle.load(open(saved_model_fname, "rb"))
-    # input rating list : {1: 4.0, 2: 3.5, 3: 5.0}
-
-    item_ids = {r: i for i, r in items.items()}
-    mapped_idx = [item_ids[s] for s in input_rating_dict.keys() if s in item_ids]
-    data = [weight * float(x) for x in input_rating_dict.values()]
-    # print('mapped index', mapped_idx)
-    # print('weight data', data)
-    rows = [0 for _ in mapped_idx]
-    shape = (1, model.item_factors.shape[0])
-    return coo_matrix((data, (rows, mapped_idx)), shape=shape).tocsr()
-
-
-def user_based_recommendation(input_ratings):
+def build_rating_matrix(df=get_rating_df()):
     ratings_df = pd.read_csv(data_fname)
-    ratings_df["userId"] = ratings_df["userId"].astype("category")
-    ratings_df["movieId"] = ratings_df["movieId"].astype("category")
-    movies_df = pd.read_csv(item_fname)
+    ratings_df["userId"] = ratings_df["userId"].astype(str)
+    df = df.rename(columns={"user_id": "userId", "movie_id": "movieId"})
+    df = df[["userId", "movieId", "rating"]]
+    merged_df = pd.concat([ratings_df, df], ignore_index=True)
+    rating_matrix = merged_df.pivot_table(index="userId", columns="movieId", values="rating")
+    rating_matrix = rating_matrix.fillna(0)
 
-    items = dict(enumerate(ratings_df["movieId"].cat.categories))
-    input_matrix = build_matrix_input(input_ratings, items)
-    result = calculate_user_based(input_matrix, items)
-    result = [int(x) for x in result]
-    result_items = movies_df[movies_df["movieId"].isin(result)].to_dict("records")
-    return result_items
+    return rating_matrix
+
+
+def calculate_user_based(auth_userId, matrix=build_rating_matrix(), n_neighbors=5):
+    auth_user_idx = matrix.index.get_loc(auth_userId)
+    model_knn = NearestNeighbors(metric='cosine', algorithm='brute')
+    model_knn.fit(matrix)
+    
+    distances, indices = model_knn.kneighbors(matrix.iloc[auth_user_idx, :].values.reshape(1, -1), n_neighbors=n_neighbors+1)
+    
+    similar_users = [matrix.index[i] for i in indices.flatten() if i != auth_user_idx]
+
+    return similar_users
+
+
+def user_based_recommendation(auth_userId, matrix=build_rating_matrix()):
+    movies_df = pd.read_csv(item_fname)
+    similar_users = calculate_user_based(auth_userId)
+    similar_users = matrix[matrix.index.isin(similar_users)]
+    similar_users = similar_users.mean(axis=0)
+    similar_users_df = pd.DataFrame(similar_users, columns=["user_similarity"])
+
+    user_df = matrix[matrix.index == auth_userId]
+    user_df = user_df.transpose()
+    user_df.columns = ["rating"]
+
+    unseen_df = user_df[user_df["rating"] == 0]
+    unseen_list = unseen_df.index.tolist()
+
+    filter_unseen_movies_df = similar_users_df[similar_users_df.index.isin(unseen_list)]
+    sorted_filter_unseen_movies_df = filter_unseen_movies_df.sort_values(by="user_similarity", ascending=False)
+    top = sorted_filter_unseen_movies_df.head(10)
+    index = top.index.tolist()
+
+    result = movies_df[movies_df["movieId"].isin(index)].to_dict("records")
+
+    return result
 
 # 검색 영화와 비슷한 장르의 영화 추천
 async def _search_movies_r(query):
