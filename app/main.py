@@ -61,7 +61,7 @@ async def item_based(item_id: int):
 
 @app.get("/search/")
 async def search_movies(query: str = Query(None)):
-    result = await _search_movies(query)
+    result = _search_movies(query)
     return {"result": result}
 
 @app.get("/search-recommendation/") 

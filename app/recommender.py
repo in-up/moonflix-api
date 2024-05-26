@@ -140,7 +140,6 @@ def user_based_recommendation(auth_userId, matrix=build_rating_matrix()):
 
     return result
 
-# 검색 영화와 비슷한 장르의 영화 추천
 async def _search_movies_r(query):
     if not query:
         return []
@@ -149,29 +148,23 @@ async def _search_movies_r(query):
     movies_df['title'] = movies_df['title'].str.replace(r'\s*\(\d{4}\)\s*$', '', regex=True)
     search_terms = query.lower().split()
 
-    # 검색어 전체 포함 영화 찾기
     full_match_mask = movies_df['title'].str.lower() == query.lower()
     full_match_df = movies_df[full_match_mask]
 
-    # 전체 일치 결과가 없으면 단어 단위 검색
     if full_match_df.empty:
-        # 검색어 포함 영화 찾기 (단어 단위)
         mask = movies_df['title'].str.lower().str.contains('|'.join(search_terms), regex=False)
         filtered_df = movies_df[mask]
     else:
         filtered_df = full_match_df
-    # 결과 합치기 (중복 제거 포함)
     result_df = pd.concat([filtered_df, full_match_df])
     result_df = result_df.drop_duplicates(subset=['movieId'])
 
-   # 검색 결과가 있는 경우에만 장르 마스크 생성
     if not result_df.empty:
-        search_genres = result_df['genres'].tolist()[0].split('|')  # 검색어 영화 장르 추출
+        search_genres = result_df['genres'].tolist()[0].split('|')  
 
-    # 시리즈 영화 찾기
         series_titles = []
         for title in result_df['title']: 
-            base_title = title.split(':')[0].strip()  # ':' 앞부분을 기준으로 시리즈 판단
+            base_title = title.split(':')[0].strip()  
             series_mask = movies_df['title'].str.startswith(base_title)
             series_titles.extend(movies_df[series_mask]['title'].tolist())
             
@@ -194,11 +187,15 @@ async def _search_movies_r(query):
                                recommended_df])
         result_df = result_df.drop_duplicates(subset=['movieId'])
         result_items = result_df.to_dict('records')
+        
+        print(result_items)
 
     return result_items
 
-# 검색한 영화의 시리즈까지만 출력
-async def _search_movies(query):
+import pandas as pd
+import numpy as np
+
+def _search_movies(query):
     if not query:
         return []
 
@@ -231,10 +228,14 @@ async def _search_movies(query):
                                movies_df[movies_df['title'].isin(series_titles)], 
                                ])
         result_df = result_df.drop_duplicates(subset=['movieId'])
-            
+    
+    # NaN 및 Inf 값을 None으로 대체
+    result_df = result_df.replace({np.nan: None, np.inf: None, -np.inf: None})
+
     result_items = result_df.to_dict('records')
     
     return result_items
+
 
 if __name__ == "__main__":
     model = model_train()
