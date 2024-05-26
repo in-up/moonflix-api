@@ -231,6 +231,10 @@ def _search_movies(query):
     
     # NaN 및 Inf 값을 None으로 대체
     result_df = result_df.replace({np.nan: None, np.inf: None, -np.inf: None})
+    
+    # rating_count로 내림차순 정렬
+    if 'rating_count' in result_df.columns:
+        result_df = result_df.sort_values(by='rating_count', ascending=False)
 
     result_items = result_df.to_dict('records')
     
