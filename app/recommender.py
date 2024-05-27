@@ -173,11 +173,11 @@ async def _search_movies_r(query):
         for idx, row in movies_df.iterrows():
             if row['title'] not in series_titles and row['title'] not in result_df['title'].tolist():
                 movie_genres = row['genres'].split('|')
-                common_genres = len(set(search_genres) & set(movie_genres))  # 장르 교집합 개수 계산
+                common_genres = len(set(search_genres) & set(movie_genres))  
                 genre_similarity.append((idx, common_genres))
 
-        genre_similarity.sort(key=lambda x: x[1], reverse=True)  # 장르 유사도 기준 내림차순 정렬
-        top_similar_indices = [idx for idx, count in genre_similarity[:5]]  # 상위 5개 영화 인덱스 추출
+        genre_similarity.sort(key=lambda x: x[1], reverse=True)  
+        top_similar_indices = [idx for idx, count in genre_similarity[:5]] 
 
         recommended_df = movies_df.iloc[top_similar_indices].sort_values(by='rating_count', ascending=False)  # rating_count 기준 내림차순 
 
@@ -239,7 +239,6 @@ def _search_movies(query):
     result_items = result_df.to_dict('records')
     
     return result_items
-
 
 if __name__ == "__main__":
     model = model_train()

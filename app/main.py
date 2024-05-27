@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware import Middleware
 
 from recommender import item_based_recommendation, user_based_recommendation,_search_movies_r, _search_movies
-from resolver import random_genres_items, random_items
+from resolver import random_items, filter_movies as resolver_filter_movies
 
 origins = [
     # "http://localhost",
@@ -41,13 +41,6 @@ async def all_movies():
     result = random_items()
     return {"result": result}
 
-
-@app.get("/genres/{genre}")
-async def genre_movies(genre: str):
-    result = random_genres_items(genre)
-    return {"result": result}
-
-
 @app.get("/user-based/{user_id}")
 async def user_based(user_id: str):
     result = user_based_recommendation(user_id)
@@ -68,3 +61,9 @@ async def search_movies(query: str = Query(None)):
 async def search_movies(query: str = Query(None)):
     result = await _search_movies_r (query)  # 변경된 함수명 사용 
     return {"result": result}
+
+@app.get("/filter_movies")
+async def filter_movies(genre: Optional[str] = None, year: Optional[str] = None, sort_by_year: bool = False):
+    filtered_movies = resolver_filter_movies(genre=genre, year=year, sort_by_year=sort_by_year)
+    return {"movies": filtered_movies}
+    
