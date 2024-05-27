@@ -135,12 +135,12 @@ async def _search_movies_r(query):
 
    # 검색 결과가 있는 경우에만 장르 마스크 생성
     if not result_df.empty:
-        search_genres = result_df['genres'].tolist()[0].split('|')  # 검색어 영화 장르 추출
+        search_genres = result_df['genres'].tolist()[0].split('|') 
 
     # 시리즈 영화 찾기
         series_titles = []
         for title in result_df['title']: 
-            base_title = title.split(':')[0].strip()  # ':' 앞부분을 기준으로 시리즈 판단
+            base_title = title.split(':')[0].strip()
             series_mask = movies_df['title'].str.startswith(base_title)
             series_titles.extend(movies_df[series_mask]['title'].tolist())
             
@@ -149,11 +149,11 @@ async def _search_movies_r(query):
         for idx, row in movies_df.iterrows():
             if row['title'] not in series_titles and row['title'] not in result_df['title'].tolist():
                 movie_genres = row['genres'].split('|')
-                common_genres = len(set(search_genres) & set(movie_genres))  # 장르 교집합 개수 계산
+                common_genres = len(set(search_genres) & set(movie_genres))  
                 genre_similarity.append((idx, common_genres))
 
-        genre_similarity.sort(key=lambda x: x[1], reverse=True)  # 장르 유사도 기준 내림차순 정렬
-        top_similar_indices = [idx for idx, count in genre_similarity[:5]]  # 상위 5개 영화 인덱스 추출
+        genre_similarity.sort(key=lambda x: x[1], reverse=True)  
+        top_similar_indices = [idx for idx, count in genre_similarity[:5]] 
 
         recommended_df = movies_df.iloc[top_similar_indices].sort_values(by='rating_count', ascending=False)  # rating_count 기준 내림차순 
 
@@ -204,6 +204,6 @@ async def _search_movies(query):
     result_items = result_df.to_dict('records')
     
     return result_items
-
+    
 if __name__ == "__main__":
     model = model_train()

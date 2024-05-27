@@ -1,5 +1,6 @@
 import pandas as pd
 import random
+import ast
 
 item_fname = 'data/movies_final.csv'
 
@@ -28,26 +29,36 @@ def random_items():
     return result_items
 
 
-def random_genres_items(genre: str):
+def filter_movies(genre=None, year=None, sort_by_year=False, sort_by_rating=False):
     movies_df = pd.read_csv(item_fname)
-    movies_df["rating_count"] = movies_df["rating_count"].astype(int)
+    df = movies_df.copy()
 
-    tmp1, tmp2, min, max, df_len = 0, 0, 0, 0, 0
-    while((tmp1 == tmp2) | df_len < 50):
-        for i in range(0, 2):
-            random_number = random.randint(10, 329)
-            if (i == 0): tmp1 = random_number
-            if (i == 1): tmp2 = random_number
-        if (tmp1 > tmp2):
-            max = tmp1
-            min = tmp2
+    if genre:
+        df['genres'] = df['genres'].apply(lambda x: x.split("|"))
+        df = df[df['genres'].apply(lambda x: genre.lower() in [g.lower() for g in x])]
+
+    if year:
+        # year 컬럼이 문자열 타입인 경우 숫자형으로 변환
+        if df['year'].dtype == 'object':
+            df['year'] = pd.to_numeric(df['year'], errors='coerce')
+
+        # NaN 값을 0으로 대체 후 숫자형으로 변환
+        df['year'] = df['year'].fillna(0).astype(int)
+        df = df[df['year'] == int(year)]
+
+    # 숫자형 컬럼의 NaN 값을 0으로, 문자열 컬럼의 NaN 값을 빈 문자열로 처리
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            df[col] = df[col].fillna('')
         else:
-            min = tmp1
-            max = tmp2
-        genre_df = movies_df[movies_df["genres"].str.contains(genre)]
-        random_df = genre_df[(genre_df["rating_count"] > min) & (genre_df["rating_count"] < max)]
-        df_len = len(random_df)
+            df[col] = df[col].fillna(0)  # 숫자형 컬럼 NaN 처리
 
-    result_items = random_df.sort_values(by="rating_avg", ascending=False)[:10].to_dict("records")
+    if sort_by_year:
+        df = df.sort_values(by='year')
+    elif sort_by_rating:
+        df = df.sort_values(by='rating_avg', ascending=False)
+    else:
+        df = df.sort_values(by='genres')
 
+    result_items = df.to_dict("records")
     return result_items
