@@ -62,8 +62,8 @@ async def search_movies(query: str = Query(None)):
     result = await _search_movies_r (query)  # 변경된 함수명 사용 
     return {"result": result}
 
-@app.get("/filter_movies")
+@app.get("/filter_movies/")
 async def filter_movies(genre: Optional[str] = None, year: Optional[str] = None, sort_by_year: bool = False):
     filtered_movies = resolver_filter_movies(genre=genre, year=year, sort_by_year=sort_by_year)
-    return {"movies": filtered_movies}
+    return {"result": filtered_movies}
     
